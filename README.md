@@ -6,62 +6,50 @@ Raw CSV data is ingested from Kaggle, schema-enforced with Spark, stored in a GC
 
 ---
 
-## Problem Statement
+### Problem Statement
 
-The Olist dataset contains 9 CSV files covering orders, customers, products, sellers, payments, and reviews from a Brazilian e-commerce marketplace. The goal was to build a production-style data pipeline that answers key business questions:
+Olist is a Brazilian e-commerce marketplace that connects small and medium-sized businesses to customers across Brazil. The dataset contains 9 CSV files covering 100,000+ orders placed between 2016 and 2018, spanning orders, customers, products, sellers, payments, reviews, and geolocation data.
+
+The challenge with this dataset is that the raw data lives across 9 separate files with no enforced types, Portuguese category names, and no joined view of the customer journey from purchase to delivery to review. A business analyst cannot answer basic questions from the raw data without significant preparation work. The goal of this project was to build a production-style end-to-end data pipeline that takes those 9 raw CSV files and transforms them into a clean and query-ready data warehouse to answer key business questions:
 
 - Which product categories generate the most revenue?
+> Understanding where revenue is concentrated helps prioritize seller acquisition and marketing spend.
+
 - How does monthly revenue trend over time?
-- Which states have the lowest customer satisfaction?
-- What percentage of orders are delivered late?
+> Identifying growth patterns and seasonal spikes informs inventory and logistics planning.
+
+- Which states place the most orders?
+> Understanding the geographic distribution of demand reveals where Olist's customer base is strongest and where there is untapped growth potential.
+
+- Which states have the longest average delivery times?
+> Identifying geographic bottlenecks in the delivery network highlights where logistics infrastructure or seller fulfillment needs improvement.
+
+[View Interactive Dashboard](https://lookerstudio.google.com/reporting/ca2b76a6-db5f-40ba-be9d-91dee4f52dd0)
+<img width="1491" height="1116" alt="olist_dashboard" src="https://github.com/user-attachments/assets/ad211aa5-ec1a-4f61-a63a-9ae4fb143e77" />
+
+
+
+### Pipeline Architecture
+<img width="2394" height="1344" alt="olist_pipeline_architecture" src="https://github.com/user-attachments/assets/9066bfc3-6e68-49b1-b2bd-6c2818d56e65" />
+
+### Technologies
+
+| Tool | Purpose |
+|---|---|
+| **Terraform** | Provision GCS bucket and BigQuery dataset |
+| **Docker / Docker Compose** | Containerise Airflow and all dependencies |
+| **Apache Airflow** | Orchestrate ingestion and warehouse DAGs |
+| **Apache Spark (PySpark)** | Schema enforcement and CSV to Parquet conversion |
+| **Google Cloud Storage** | Data lake storing raw CSVs and processed Parquet files |
+| **Google BigQuery** | Data warehouse with partitioning and clustering |
+| **dbt** | Staging and mart transformations with data quality tests |
+| **Looker** | Business intelligence dashboard |
+| **GitHub Actions** | CI pipeline that runs dbt parse, compile, and test on every push |
+| **Make** | Shortcuts for common development commands |
 
 ---
 
-## [View Dashboard](https://lookerstudio.google.com/reporting/ca2b76a6-db5f-40ba-be9d-91dee4f52dd0)
-
-[View Dashboard](https://lookerstudio.google.com/reporting/ca2b76a6-db5f-40ba-be9d-91dee4f52dd0)
-<img width="1488" height="1121" alt="image" src="https://github.com/user-attachments/assets/cefc019d-917f-4bbd-befa-eac8bc560a3d" />
-
-
-## Architecture
-<img width="1920" height="1080" alt="pipeline_architecture" src="https://github.com/user-attachments/assets/c251a899-494a-4a40-9421-022529f32937" />
-
-
-
-```
-![Uploading Group 1216.svg…]()
-
-┌──────────────┐     ┌─────────────────────────────────────────────────────┐
-│   Kaggle API │────▶│                      GCS (Data Lake)                │
-│  (9 CSV files)│     │   raw/          -->   processed/                    │
-└──────────────┘     │   *.csv               *.parquet (Spark enforced)    │
-                     └────────────────────────────┬────────────────────────┘
-                                                  │
-                                          Airflow DAG
-                                       (olist_warehouse)
-                                                  │
-                     ┌────────────────────────────▼────────────────────────┐
-                     │               BigQuery (Data Warehouse)             │
-                     │                                                     │
-                     │   olist_dwh  (raw tables, partitioned + clustered)  │
-                     │       │                                             │
-                     │   dbt staging  -->  dbt marts                      │
-                     │   (views)           (tables)                        │
-                     └────────────────────────────┬────────────────────────┘
-                                                  │
-                                             Looker
-                                          (Dashboard)
-```
-
-- Orchestration: Apache Airflow with two DAGs (ingestion + warehouse)
-- Infrastructure: Terraform provisions GCS bucket and BigQuery dataset
-- Containerisation: Docker Compose running Airflow webserver, scheduler, and Postgres
-
----
-
-## Data Model
-<img width="762" height="729" alt="Group 1222" src="https://github.com/user-attachments/assets/8a94ff7a-864a-41c7-a936-2682f170a407" />
-
+### Data Model & Dictionary
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -100,45 +88,36 @@ The Olist dataset contains 9 CSV files covering orders, customers, products, sel
 └───────────────────────┘          │ order_status                │
                                    └─────────────────────────────┘
 ```
+##### Target databases: GCP Data Lake & BigQuery
 
-- `fct_orders`: one row per order, joins orders + customers + payments + reviews
-- `fct_order_items`: one row per item, joins order items + products + sellers + orders
+##### Target tables: /raw & /processed
 
----
+`orders_dataset.csv`: Core table — order status, timestamps
 
-## Technologies
+`order_items_dataset.csv`: Items per order — price, freight, seller
 
-| Tool | Purpose |
-|---|---|
-| **Terraform** | Provision GCS bucket and BigQuery dataset |
-| **Docker / Docker Compose** | Containerise Airflow and all dependencies |
-| **Apache Airflow** | Orchestrate ingestion and warehouse DAGs |
-| **Apache Spark (PySpark)** | Schema enforcement and CSV to Parquet conversion |
-| **Google Cloud Storage** | Data lake storing raw CSVs and processed Parquet files |
-| **Google BigQuery** | Data warehouse with partitioning and clustering |
-| **dbt** | Staging and mart transformations with data quality tests |
-| **Looker** | Business intelligence dashboard |
-| **GitHub Actions** | CI pipeline that runs dbt parse, compile, and test on every push |
-| **Make** | Shortcuts for common development commands |
+`order_payments_dataset.csv`: Payment type and value per order
 
----
+`order_reviews_dataset.csv`: Customer review scores and comments
 
-## Dashboard
+`customers_dataset.csv`: Customer location and unique IDs
 
-> Add screenshots here after publishing the Looker report.
+`sellers_dataset.csv`: Seller location data
 
-**Tile 1: Top 10 Product Categories by Revenue**
-Bar chart from `fct_order_items` showing which categories drive the most sales.
+`products_dataset.csv`: Product dimensions, category names
 
-**Tile 2: Monthly Revenue**
-Line chart from `fct_orders` showing revenue trends over time.
+`geolocation_dataset.csv`: ZIP code → lat/lng mapping
 
-**KPI Cards**
-Total Orders | Total Revenue | Avg Review Score | Late Deliveries
+`product_category_name_translation.csv`: Portuguese → English category names
+
+`fct_orders`: one row per order, joins orders + customers + payments + reviews
+
+`fct_order_items`: one row per item, joins order items + products + sellers + orders
+
 
 ---
 
-## Reproduce This Project
+# Reproduce This Project
 
 ### Prerequisites
 

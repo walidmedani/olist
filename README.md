@@ -12,7 +12,7 @@ Raw CSV data is ingested from Kaggle, schema-enforced with Spark, stored in a GC
 
 Olist is a Brazilian e-commerce marketplace that connects small and medium-sized businesses to customers across Brazil. The dataset contains 9 CSV files covering 100,000+ orders placed between 2016 and 2018, spanning orders, customers, products, sellers, payments, reviews, and geolocation data.
 
-The challenge with this dataset is that the raw data lives across 9 separate files with no enforced types, Portuguese category names, and no joined view of the customer journey from purchase to delivery to review. A business analyst cannot answer basic questions from the raw data without significant preparation work. The goal of this project was to build a production-style end-to-end data pipeline that takes those 9 raw CSV files and transforms them into a clean and query-ready data warehouse to answer key business questions:
+The challenge with this dataset is that the raw data lives across 9 separate files with no enforced types, Portuguese category names, and no joined view of the customer journey from purchase to delivery to review. A business analyst cannot answer basic questions from the raw data without significant preparation work. The goal of this project was to build a production style end-to-end data pipeline that takes those 9 raw CSV files and transforms them into a clean and query-ready data warehouse to answer key business questions:
 
 - Which product categories generate the most revenue?
 > Understanding where revenue is concentrated helps prioritize seller acquisition and marketing spend.
@@ -134,9 +134,9 @@ The challenge with this dataset is that the raw data lives across 9 separate fil
 
 ##### `Data Inventory`
 
-`orders_dataset.csv`: Core table — order status, timestamps
+`orders_dataset.csv`: Core table- order status, timestamps
 
-`order_items_dataset.csv`: Items per order — price, freight, seller
+`order_items_dataset.csv`: Items per order- price, freight, seller
 
 `order_payments_dataset.csv`: Payment type and value per order
 

@@ -1,0 +1,57 @@
+name: dbt CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'dbt/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'dbt/**'
+
+jobs:
+  dbt-check:
+    name: Parse & Test dbt Models
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dbt-bigquery
+        run: pip install dbt-bigquery==1.8.7
+
+      - name: Write profiles.yml
+        run: |
+          cat > dbt/olist/profiles.yml <<EOF
+          olist:
+            target: ci
+            outputs:
+              ci:
+                type: bigquery
+                method: service-account-json
+                project: ${{ secrets.GCP_PROJECT_ID }}
+                dataset: olist_dwh
+                threads: 4
+                timeout_seconds: 300
+                location: US
+                keyfile_json: ${{ secrets.GCP_SA_KEY_JSON }}
+          EOF
+
+      - name: dbt parse (syntax check)
+        working-directory: dbt/olist
+        run: dbt parse --profiles-dir .
+
+      - name: dbt compile
+        working-directory: dbt/olist
+        run: dbt compile --profiles-dir .
+
+      - name: dbt test
+        working-directory: dbt/olist
+        run: dbt test --profiles-dir .
